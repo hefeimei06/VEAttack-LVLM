@@ -1,0 +1,33 @@
+model:
+  arch: minigpt4
+  model_type: pretrain_vicuna0
+  max_txt_len: 160
+  end_sym: "###"
+  low_resource: True
+  prompt_template: '###Human: {} ###Assistant: '
+  llama_model: "/home/VEAttack/MiniGPT-4/vicuna-7b"
+  ckpt: '/home/VEAttack/MiniGPT-4/prerained_minigpt4_7b.pth'
+
+
+datasets:
+  cc_sbu_align:
+    vis_processor:
+      train:
+        name: "blip2_image_eval"
+        image_size: 224
+    text_processor:
+      train:
+        name: "blip_caption"
+
+evaluation_datasets:
+  cococaption:
+    eval_file_path: /home/VEAttack/mPLUG-Owl/mPLUG-Owl2/coco_caption_annotations.json
+    gt_path: /home/datasets/coco2014/annotations/captions_val2014.json  
+    img_path: /home/datasets/coco2014/val2014                                  
+    max_new_tokens: 30
+    batch_size: 1
+
+run:
+  task: image_text_pretrain
+  name: minigpt4_evaluation
+  save_path: /home/VEAttack
