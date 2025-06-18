@@ -1,6 +1,6 @@
 # VEAttack: Downstream-agnostic Vision Encoder Attack against Large Vision Language Models
 
-arxiv: https://arxiv.org/abs/2505.17440
+Paper: https://arxiv.org/abs/2505.17440
 
 Hefei Mei, Zirui Wang, Shen You, Minjing Dong, Chang Xu
 
@@ -90,3 +90,16 @@ bash ./Qwen-VL/caption_veattack.sh
 ## Acknowledgement
 
 Our code is implemented based on [RobustVLM](https://github.com/chs20/RobustVLM), [LLaVA](https://github.com/haotian-liu/LLaVA), [OpenFlamingo](https://github.com/mlfoundations/open_flamingo), [MiniGPT-4](https://github.com/Vision-CAIR/MiniGPT-4), [mPLUG-Owl2](https://github.com/X-PLUG/mPLUG-Owl/tree/main/mPLUG-Owl2) and [Qwen-VL](https://github.com/QwenLM/Qwen-VL/tree/master). Thanks for their excellent works.
+
+## Citation
+
+If you find this repository useful, please consider citing our paper:
+
+```
+@article{mei2025veattack,
+  title={VEAttack: Downstream-agnostic Vision Encoder Attack against Large Vision Language Models},
+  author={Mei, Hefei and Wang, Zirui and You, Shen and Dong, Minjing and Xu, Chang},
+  journal={arXiv preprint arXiv:2505.17440},
+  year={2025}
+}
+```
