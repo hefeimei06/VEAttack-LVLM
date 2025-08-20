@@ -81,7 +81,7 @@ bash ./MiniGPT-4/caption_veattack.sh
 
 ### Qwen-VL
 
-After configuring the Qwen-VL environment, replace the file /home/.cache/huggingface/modules/transformers_modules/Qwen-VL/visual.py with the one in our project ./Qwen-VL/replace/visual.py. Then evaluate the performance of VEAttack:
+After configuring the Qwen-VL environment, replace the file /home/.cache/modelscope/hub/models/qwen/Qwen-VL/visual.py with the one in our project ./Qwen-VL/replace/visual.py. Then evaluate the performance of VEAttack:
 
 ```
 bash ./Qwen-VL/caption_veattack.sh
