@@ -16,48 +16,108 @@ from mplug_owl2.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN
 from mplug_owl2.conversation import conv_templates, SeparatorStyle
 from mplug_owl2.model.builder import load_pretrained_model
 from mplug_owl2.mm_utils import process_images, tokenizer_image_token, get_model_name_from_path, KeywordsStoppingCriteria
-from mplug_owl2.evaluate.attacks.pgd_veattack import pgd_veattack
+# from mplug_owl2.evaluate.attacks.pgd_veattack import pgd_veattack
 
 import numpy as np
 import open_clip
 import torch.nn.functional as F
 from torchvision.transforms import transforms
 
-class ClipVisionModel(torch.nn.Module):
-    def __init__(self, model, normalize):
-        super().__init__()
-        self.model = model
-        self.normalize = normalize
-        # if args['vision_encoder_pretrained'] != 'openai':
-        #     self.model.load_state_dict(torch.load(args['vision_encoder_pretrained'], map_location='cpu'))
+def project_perturbation(perturbation, eps, norm):
+    if norm in ['inf', 'linf', 'Linf']:
+        pert_normalized = torch.clamp(perturbation, -eps, eps)
+        return pert_normalized
+    elif norm in [2, 2.0, 'l2', 'L2', '2']:
+        pert_normalized = torch.renorm(perturbation, p=2, dim=0, maxnorm=eps)
+        return pert_normalized
+    else:
+        raise NotImplementedError(f'Norm {norm} not supported')
 
-        self.model.load_state_dict(torch.load('/home/VEAttack/ckpt/tecoa_eps_4.pt', map_location='cpu'))
-    def forward(self, vision, output_normalize, tokens=False):
-        vision = torch.nn.functional.interpolate(vision, size=(224, 224), mode='bilinear', align_corners=False)
-        if not tokens:
-            feature = self.model(self.normalize(vision))
-            if output_normalize:
-                feature = F.normalize(feature, dim=-1)
-            return feature
-        else:
-            self.model.output_tokens = True
-            feature, calculated_tokens = self.model(self.normalize(vision))
-            if output_normalize:
-                feature = F.normalize(feature, dim=-1)
-                calculated_tokens = F.normalize(calculated_tokens, dim=-1)
-            return feature, calculated_tokens
+
+def normalize_grad(grad, p):
+    if p in ['inf', 'linf', 'Linf']:
+        return grad.sign()
+    elif p in [2, 2.0, 'l2', 'L2', '2']:
+        bs = grad.shape[0]
+        grad_flat = grad.view(bs, -1)
+        grad_normalized = F.normalize(grad_flat, p=2, dim=1)
+        return grad_normalized.view_as(grad)
+
+
+
+def pgd_veattack(
+        forward,
+        loss_fn,
+        data_clean,
+        norm,
+        eps,
+        iterations,
+        stepsize,
+        perturbation=None,
+        mode='min',
+        momentum=0.9,
+        verbose=False
+):
+    """
+    Minimize or maximize given loss
+    """
+    # make sure data is in image space
+    assert torch.max(data_clean) < 1. + 1e-1 and torch.min(data_clean) > -1e-1
+
+    if perturbation is None:
+        perturbation = torch.zeros_like(data_clean, requires_grad=True)
+    velocity = torch.zeros_like(data_clean)
+    for i in range(iterations):
+        perturbation.requires_grad = True
+        with torch.enable_grad():
+            feature = forward.encode_images(data_clean + perturbation, vision_feature=True)
+            loss = loss_fn(feature[:, 1:, :])
+            if verbose:
+                print(f'[{i}] {loss.item():.5f}')
+
+        with torch.no_grad():
+            gradient = torch.autograd.grad(loss, perturbation)[0]
+            gradient = gradient
+            if gradient.isnan().any():  #
+                print(f'attention: nan in gradient ({gradient.isnan().sum()})')  #
+                gradient[gradient.isnan()] = 0.
+            # normalize
+            gradient = normalize_grad(gradient, p=norm)
+            # momentum
+            velocity = momentum * velocity + gradient
+            velocity = normalize_grad(velocity, p=norm)
+            # update
+            if mode == 'min':
+                perturbation = perturbation - stepsize * velocity
+            elif mode == 'max':
+                perturbation = perturbation + stepsize * velocity
+            else:
+                raise ValueError(f'Unknown mode: {mode}')
+            # project
+            perturbation = project_perturbation(perturbation, eps, norm)
+            perturbation = torch.clamp(
+                data_clean + perturbation, 0, 1
+            ) - data_clean  # clamp to image space
+            assert not perturbation.isnan().any()
+            assert torch.max(data_clean + perturbation) < 1. + 1e-1 and torch.min(
+                data_clean + perturbation
+            ) > -1e-1
+
+            # assert (ctorch.compute_norm(perturbation, p=self.norm) <= self.eps + 1e-6).all()
+    # todo return best perturbation
+    # problem is that model currently does not output expanded loss
+    return data_clean + perturbation.detach()
+
 
 class ComputeLossWrapper:
-    def __init__(self, embedding_orig, tokens_orig, reduction='mean'):
-        self.embedding_orig = embedding_orig
+    def __init__(self, tokens_orig, reduction='mean'):
         self.reduction = reduction
         self.tokens_orig = tokens_orig
 
-    def __call__(self, embedding, tokens):
-        return compute_loss(embedding=embedding, embedding_orig=self.embedding_orig,
-                            tokens=tokens, tokens_orig=self.tokens_orig, reduction=self.reduction)
+    def __call__(self, tokens):
+        return compute_loss(tokens=tokens, tokens_orig=self.tokens_orig, reduction=self.reduction)
 
-def compute_loss(embedding, embedding_orig, tokens, tokens_orig, reduction='mean'):
+def compute_loss(tokens, tokens_orig, reduction='mean'):
 
     loss = cosine_similarity_loss(out=tokens, targets=tokens_orig, reduction=reduction)
             
@@ -309,8 +369,8 @@ if __name__ == '__main__':
         image_processor=image_processor,
         few_shot=args.few_shot,
     )
-    np.random.seed(44)
-    random_indices = np.random.choice(len(dataset), 500, replace=False)
+    np.random.seed(66)
+    random_indices = np.random.choice(len(dataset), 1000, replace=False)
     dataset = torch.utils.data.Subset(dataset, random_indices)
     coco_karpathy_test_loader = torch.utils.data.DataLoader(
         dataset=dataset,
@@ -325,19 +385,7 @@ if __name__ == '__main__':
     image_ids = []
     captions = []
 
-    args.clip_model_name = 'ViT-L-14'
-    clip_model_orig, _, image_processor_clip = open_clip.create_model_and_transforms(
-        args.clip_model_name, pretrained='openai'
-    )
-
-    # Remove the Normalize transform by creating a new Compose object
-    normalize = image_processor_clip.transforms[-1]
-    del image_processor_clip
-    clip_model_orig.cpu()
-    clip_model_vision = ClipVisionModel(model=clip_model_orig.visual, normalize=normalize)
-    clip_model_vision.cuda()
-    clip_model_orig.cuda()
-    args.eps = 16 / 255
+    args.eps = 8 / 255
 
     for _, (ids, image_tensor, input_ids, attention_mask) in enumerate(tqdm(coco_karpathy_test_loader)):
 
@@ -345,26 +393,23 @@ if __name__ == '__main__':
         std_tensor = torch.tensor(image_processor.image_std).view(1, 3, 1, 1)
         image_tensor = image_tensor * std_tensor + mean_tensor
 
-        args.output_normalize = False
         image_tensor = image_tensor.to(model.device)
         with torch.no_grad():
-            embedding_orig, tokens_orig = clip_model_vision(vision=image_tensor,
-                                                            output_normalize=args.output_normalize, tokens=True)
+            features_orig = model.encode_images(image_tensor.to(dtype=model.dtype).cuda(), vision_feature=True)
 
-       loss_inner_wrapper = ComputeLossWrapper(embedding_orig, tokens_orig, 'mean')
+        loss_inner_wrapper = ComputeLossWrapper(features_orig[:, 1:, :], 'mean')
         args.norm = 'linf'
         args.iterations_adv = 100  # 10, 50
         args.stepsize_adv = 4 / 255  # 1 / 255
         image_tensor = pgd_veattack(
-            forward=clip_model_vision,
+            forward=model,
             loss_fn=loss_inner_wrapper,
-            data_clean=image_tensor,
+            data_clean=image_tensor.to(dtype=model.dtype).cuda(),
             norm=args.norm,
             eps=args.eps,
             iterations=args.iterations_adv,
             stepsize=args.stepsize_adv,
-            output_normalize=args.output_normalize,
-            perturbation=torch.zeros_like(image_tensor).uniform_(-args.eps, args.eps).requires_grad_(True),
+            perturbation=torch.zeros_like(image_tensor.to(dtype=model.dtype).cuda()).uniform_(-args.eps, args.eps).requires_grad_(True),
             mode='max',
             verbose=False
         )

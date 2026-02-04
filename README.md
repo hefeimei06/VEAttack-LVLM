@@ -33,7 +33,7 @@ bash bash/llava_ensemble.sh
 bash bash/of_eval_9B_apgd.sh
 ```
 
-### VEAttack on LLaVA
+### VEAttack on LLaVA and openFlamingo
 
 For captioning and VQA tasks, evaluation can be performed by modifying the -- eval_coco instruction in the args to eval_flicker30, eval_textvqa, and eval_vqav2.
 
@@ -55,11 +55,7 @@ bash bash/eval_pope_clean.sh
 bash bash/eval_pope_veattack.sh
 ```
 
-## Transfer Attack
-
-You can download different adversarial training vision encoders from [RobustVLM](https://github.com/chs20/RobustVLM), and save them in ./ckpt of our project.
-
-### mPLUG-Owl
+### VEAttack on mPLUG-Owl2
 
 - Prepare label file:
   
@@ -70,7 +66,33 @@ You can download different adversarial training vision encoders from [RobustVLM]
 - Evaluate VEAttack:
   
   ```
-  bash ./mPLUG-Owl/caption_veattack.sh
+  bash ./mPLUG-Owl/caption_veattack_graybox.sh
+  ```
+
+### Qwen-VL
+
+After configuring the Qwen-VL environment, replace the file /home/.cache/huggingface/modules/transformers_modules/Qwen-VL/visual.py with the one in our project ./Qwen-VL/replace/visual_graybox.py. Then evaluate the performance of VEAttack:
+
+```
+bash ./Qwen-VL/caption_veattack.sh
+```
+
+## Transfer Attack
+
+You can download different adversarial training vision encoders from [RobustVLM](https://github.com/chs20/RobustVLM), and save them in ./ckpt of our project.
+
+### mPLUG-Owl2
+
+- Prepare label file:
+  
+  ```
+  python ./mPLUG-Owl/mPLUG-Owl2/data.py
+  ```
+
+- Evaluate VEAttack:
+  
+  ```
+  bash ./mPLUG-Owl/caption_veattack_transfer.sh
   ```
 
 ### MiniGPT-4
@@ -81,7 +103,7 @@ bash ./MiniGPT-4/caption_veattack.sh
 
 ### Qwen-VL
 
-After configuring the Qwen-VL environment, replace the file /home/.cache/modelscope/hub/models/qwen/Qwen-VL/visual.py with the one in our project ./Qwen-VL/replace/visual.py. Then evaluate the performance of VEAttack:
+After configuring the Qwen-VL environment, replace the file /home/.cache/huggingface/modules/transformers_modules/Qwen-VL/visual.py with the one in our project ./Qwen-VL/replace/visual_transfer.py. Then evaluate the performance of VEAttack:
 
 ```
 bash ./Qwen-VL/caption_veattack.sh

@@ -6,7 +6,7 @@ python -m torch.distributed.launch --use-env \
     --node_rank 0 \
     --master_addr 127.0.0.1 \
     --master_port 12345 \
-    /home/VEAttack/mPLUG-Owl/mPLUG-Owl2/mplug_owl2/evaluate/evaluate_caption_veattack.py \
+    /home/VEAttack/mPLUG-Owl/mPLUG-Owl2/mplug_owl2/evaluate/evaluate_caption_veattack_transfer.py \
     --checkpoint $checkpoint \
     --dataset $ds \
     --batch-size 1 \

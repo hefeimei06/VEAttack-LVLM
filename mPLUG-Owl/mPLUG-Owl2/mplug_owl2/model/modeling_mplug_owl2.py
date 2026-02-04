@@ -222,9 +222,17 @@ class MPLUGOwl2LlamaForCausalLM(LlamaForCausalLM, MPLUGOwl2MetaForCausalLM):
         # Initialize weights and apply final processing
         self.post_init()
 
-    def encode_images(self, images):
-        image_features = self.get_model().vision_model(images).last_hidden_state
-        image_features = self.get_model().visual_abstractor(encoder_hidden_states=image_features).last_hidden_state
+    # def encode_images(self, images):
+    #     image_features = self.get_model().vision_model(images).last_hidden_state
+    #     image_features = self.get_model().visual_abstractor(encoder_hidden_states=image_features).last_hidden_state
+    #     return image_features
+
+    def encode_images(self, images, vision_feature=False):
+        image_features_vision = self.get_model().vision_model(images).last_hidden_state
+        if vision_feature == True:
+            return image_features_vision
+            
+        image_features = self.get_model().visual_abstractor(encoder_hidden_states=image_features_vision).last_hidden_state
         return image_features
 
     def get_model(self):
