@@ -69,7 +69,7 @@ bash bash/eval_pope_veattack.sh
   bash ./mPLUG-Owl/caption_veattack_graybox.sh
   ```
 
-### Qwen-VL
+### VEAttack on Qwen-VL
 
 After configuring the Qwen-VL environment, replace the file /home/.cache/huggingface/modules/transformers_modules/Qwen-VL/visual.py with the one in our project ./Qwen-VL/replace/visual_graybox.py. Then evaluate the performance of VEAttack:
 
