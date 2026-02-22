@@ -21,6 +21,8 @@ pip install -r requirements.txt
 
 To evaluate the transfer attack of VEAttack, you can follow the installation of [MiniGPT-4](https://github.com/Vision-CAIR/MiniGPT-4), [mPLUG-Owl2](https://github.com/X-PLUG/mPLUG-Owl/tree/main/mPLUG-Owl2) and [Qwen-VL](https://github.com/QwenLM/Qwen-VL/tree/master).
 
+**TODO**: We will release VEAttack on [Qwen3-VL](https://github.com/QwenLM/Qwen3-VL) and [internvl2](https://github.com/OpenGVLab/InternVL) in our [PA-Attack](https://github.com/hefeimei06/PA-Attack).
+
 ## White-box Attack
 
 ### Traditional APGD or Ensemble attack
@@ -32,6 +34,8 @@ bash bash/llava_ensemble.sh
 # For OpenFlamingo:
 bash bash/of_eval_9B_apgd.sh
 ```
+
+## Gray-box Attack
 
 ### VEAttack on LLaVA and openFlamingo
 
